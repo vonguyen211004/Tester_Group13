@@ -3,20 +3,17 @@ package com.railway.test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.testng.annotations.*;
+import org.testng.annotations.Test;
 import io.github.bonigarcia.wdm.WebDriverManager;
 
 public class TC08 {
     WebDriver driver;
 
-    @BeforeClass
-    public void setup() {
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
-    }
-
     @Test
     public void loginUnactivatedAccount() {
+        WebDriverManager.chromedriver().setup();
+        driver = new ChromeDriver();
+
         driver.get("http://railwayb1.somee.com/");
         driver.findElement(By.linkText("Login")).click();
 
@@ -26,10 +23,7 @@ public class TC08 {
 
         String error = driver.findElement(By.xpath("//p[@class='message error LoginForm']")).getText();
         System.out.println("Error: " + error);
-    }
 
-    @AfterClass
-    public void tearDown() {
         driver.quit();
     }
 }

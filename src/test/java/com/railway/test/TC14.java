@@ -1,37 +1,68 @@
 package com.railway.test;
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.testng.annotations.*;
-import io.github.bonigarcia.wdm.WebDriverManager;
+import common.Constant.Constant;
+import org.testng.annotations.Test;
+import org.testng.asserts.SoftAssert;
+import pageObjects.Railway.BookTicketPage;
+import pageObjects.Railway.HomePage;
+import pageObjects.Railway.LoginPage;
+import org.openqa.selenium.*;
 
-public class TC14 {
-    WebDriver driver;
+import java.util.Map;
 
-    @BeforeClass
-    public void setup() {
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
-    }
+public class TC14 extends PreparationCommonTest {
 
     @Test
-    public void bookOneTicket() {
-        driver.get("http://railwayb1.somee.com/");
-        driver.findElement(By.linkText("Login")).click();
-        driver.findElement(By.id("username")).sendKeys("validEmail");
-        driver.findElement(By.id("password")).sendKeys("validPassword");
-        driver.findElement(By.xpath("//input[@type='submit']")).click();
+    public void TC14() {
+        SoftAssert softAssert = new SoftAssert();
 
-        driver.findElement(By.linkText("Book ticket")).click();
-        driver.findElement(By.xpath("//input[@type='submit']")).click();
+        String expectedDate = "5/11/2025";
+        String expectedDepartStation = "Sài Gòn";
+        String expectedArriveStation = "Nha Trang";
+        String expectedSeatType = "Soft bed with air conditioner";
+        String expectedTicketAmount = "1";
+        String expectedUrlBase = "http://railwayb1.somee.com/Page/SuccessPage";
 
-        String message = driver.findElement(By.xpath("//div[@id='content']")).getText();
-        System.out.println("Booking Result: " + message);
-    }
+        HomePage homePage = new HomePage(Constant.WEBDRIVER).open();
+        LoginPage loginPage = homePage.gotoLoginPage();
+        loginPage.login(Constant.USERNAME, Constant.PASSWORD);
 
-    @AfterClass
-    public void tearDown() {
-        driver.quit();
+        BookTicketPage bookTicketPage = loginPage.goToBookTicket();
+
+        try {
+            String actualSuccessMessage = bookTicketPage.bookTicketPage(expectedDate, expectedDepartStation, expectedArriveStation, expectedSeatType, expectedTicketAmount).getSuccessMessage();
+            String expectedSuccessMessage = "Ticket booked successfully!";
+
+            softAssert.assertEquals(actualSuccessMessage, expectedSuccessMessage, "TEST FAIL: Success message is not displayed as expected.");
+
+            String actualUrl = bookTicketPage.getCurrentUrl();
+            softAssert.assertTrue(actualUrl.contains(expectedUrlBase), "TEST FAIL: The page was not redirected to the success page. Actual URL: " + actualUrl);
+
+            Map<String, String> ticketInformation = bookTicketPage.getTicketInformation();
+            if (ticketInformation != null && !ticketInformation.isEmpty()) {
+                softAssert.assertEquals(ticketInformation.get("Depart Date"), expectedDate, "TEST FAIL: Depart Date is incorrect.");
+                softAssert.assertEquals(ticketInformation.get("Depart Station"), expectedDepartStation, "TEST FAIL: Depart Station is incorrect.");
+                softAssert.assertEquals(ticketInformation.get("Arrive Station"), expectedArriveStation, "TEST FAIL: Arrive Station is incorrect.");
+                softAssert.assertEquals(ticketInformation.get("Seat Type"), expectedSeatType, "TEST FAIL: Seat Type is incorrect.");
+                softAssert.assertEquals(ticketInformation.get("Amount"), expectedTicketAmount, "TEST FAIL: Ticket Amount is incorrect.");
+            } else {
+                softAssert.fail("TEST FAIL: Ticket information is null or empty.");
+            }
+
+        } catch (TimeoutException e) {
+            System.out.println("Timeout waiting for the element to be visible: " + e.getMessage());
+            softAssert.fail("Timeout waiting for the element to be visible: " + e.getMessage());
+        } catch (NoSuchElementException e) {
+            System.out.println("Element not found: " + e.getMessage());
+            softAssert.fail("Element not found: " + e.getMessage());
+        } catch (StaleElementReferenceException e) {
+            System.out.println("Element is stale: " + e.getMessage());
+            softAssert.fail("Element is stale: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("Unexpected error: " + e.getMessage());
+            softAssert.fail("Unexpected error: " + e.getMessage());
+        } finally {
+            softAssert.assertAll();
+        }
     }
 }

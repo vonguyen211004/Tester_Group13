@@ -1,82 +1,67 @@
 package com.railway.test;
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.*;
-import io.github.bonigarcia.wdm.WebDriverManager;
+import common.Constant.Constant;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+import org.openqa.selenium.Alert;
+import org.openqa.selenium.NoAlertPresentException;
+import pageObjects.Railway.BookTicketPage;
+import pageObjects.Railway.HomePage;
+import pageObjects.Railway.LoginPage;
+import pageObjects.Railway.MyTicket;
 
-import java.time.Duration;
+import java.util.List;
 
-import static org.testng.Assert.assertFalse;
-
-public class TC16 {
-    WebDriver driver;
-
-    @BeforeClass
-    public void setup() {
-        // Setup WebDriver và maximize cửa sổ trình duyệt
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
-        driver.manage().window().maximize();
-    }
-
+public class TC16 extends PreparationCommonTest {
     @Test
-    public void cancelTicket() {
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+    public void testUserCanCancelTicket() {
+        System.out.println("TC16 - User can cancel a ticket");
+
+        String date = "5/17/2025";
+        String departStation = "Quảng Ngãi";
+        String arriveStation = "Nha Trang";
+        String seatType = "Hard seat";
+        String ticketAmount = "1";
+
+        HomePage homePage = new HomePage(Constant.WEBDRIVER).open();
+        LoginPage loginPage = homePage.gotoLoginPage();
+        loginPage.login(Constant.USERNAME, Constant.PASSWORD);
+
+        BookTicketPage bookTicketPage = loginPage.goToBookTicket();
+
         try {
-            // Navigate đến trang chính
-            driver.get("http://railwayb1.somee.com/");
-
-            // Nhấn vào liên kết "Login"
-            WebElement loginLink = wait.until(ExpectedConditions.elementToBeClickable(By.linkText("Login")));
-            loginLink.click();
-
-            // Điền tài khoản đăng nhập
-            WebElement usernameField = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("username")));
-            usernameField.sendKeys("validEmail@example.com"); // Thay bằng email hợp lệ
-
-            WebElement passwordField = driver.findElement(By.id("password"));
-            passwordField.sendKeys("validPassword123"); // Thay bằng mật khẩu hợp lệ
-
-            WebElement loginButton = driver.findElement(By.xpath("//input[@type='submit']"));
-            loginButton.click();
-
-            // Đi đến trang "My ticket"
-            WebElement myTicketLink = wait.until(ExpectedConditions.elementToBeClickable(By.linkText("My ticket")));
-            myTicketLink.click();
-
-            // Hủy vé
-            WebElement cancelButton = wait.until(ExpectedConditions.elementToBeClickable(By.xpath("//input[@value='Cancel']")));
-            cancelButton.click();
-
-            // Chấp nhận cảnh báo hủy vé
-            driver.switchTo().alert().accept();
-
-            // Xác minh rằng vé đã được xóa khỏi danh sách
-            WebElement ticketTable = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//table")));
-            String updatedContent = ticketTable.getText();
-
-            System.out.println("Ticket list after cancel: " + updatedContent);
-
-            // Assert rằng vé đã bị hủy
-            assertFalse(updatedContent.contains("Ticket ID"), "Ticket was not removed from the list!");
-
+            handleAlert();
+            bookTicketPage.bookTicketPage(date, departStation, arriveStation, seatType, ticketAmount);
         } catch (Exception e) {
-            // In thông báo lỗi nếu xảy ra exception
-            System.err.println("Test failed: " + e.getMessage());
-            e.printStackTrace();
+            System.out.println("Exception while booking ticket: " + e.getMessage());
+            Assert.fail("Booking ticket failed: " + e.getMessage());
         }
+
+        MyTicket myTicketPage = bookTicketPage.goToMyTicket();
+        List<String> ticketIds = myTicketPage.getIds();
+
+        Assert.assertNotNull(ticketIds, "Ticket IDs list is null.");
+        Assert.assertFalse(ticketIds.isEmpty(), "No tickets found to cancel.");
+
+        String selectedId = myTicketPage.getAnRandomId();
+        Assert.assertNotNull(selectedId, "No ticket ID selected.");
+        Assert.assertTrue(ticketIds.contains(selectedId), "Selected ticket ID is not in the list.");
+
+        myTicketPage.cancelTicketWithId(selectedId);
+        List<String> updatedIds = myTicketPage.getIds();
+
+        Assert.assertFalse(updatedIds.contains(selectedId), "Ticket has not been canceled.");
+        System.out.println("Ticket with ID " + selectedId + " has been successfully canceled.");
     }
 
-    @AfterClass
-    public void tearDown() {
-        // Đóng trình duyệt
-        if (driver != null) {
-            driver.quit();
+    private void handleAlert() {
+        try {
+            Alert alert = Constant.WEBDRIVER.switchTo().alert();
+            String alertText = alert.getText();
+            System.out.println("Alert found with text: " + alertText);
+            alert.accept();
+        } catch (NoAlertPresentException e) {
+            System.out.println("No alert present.");
         }
     }
 }

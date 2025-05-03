@@ -1,64 +1,38 @@
 package com.railway.test;
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.*;
-import io.github.bonigarcia.wdm.WebDriverManager;
+import common.Constant.Constant;
+import org.testng.Assert;
+import org.testng.annotations.Test;
+import pageObjects.Railway.BookTicketPage;
+import pageObjects.Railway.HomePage;
+import pageObjects.Railway.LoginPage;
+import pageObjects.Railway.TimeTablePage;
 
-import java.time.Duration;
-
-import static org.testng.Assert.assertEquals;
-
-public class TC15 {
-    WebDriver driver;
-
-    @BeforeClass
-    public void setup() {
-        // Setup WebDriver và maximize cửa sổ trình duyệt
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
-        driver.manage().window().maximize(); // Mở rộng trình duyệt
-    }
+public class TC15 extends PreparationCommonTest {
 
     @Test
-    public void openBookTicketFromTimetable() {
-        // Navigate đến trang chính
-        driver.get("http://railwayb1.somee.com/");
+    public void TC15() {
+        System.out.println("TC15 - User can open 'Book ticket' page by clicking on 'Book ticket' link in 'Train timetable' page");
 
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10)); // Cài đặt thời gian chờ
+        HomePage homePage = new HomePage(Constant.WEBDRIVER).open();
 
-        try {
-            // Chờ và nhấn vào liên kết "Train timetable"
-            WebElement trainTimetableLink = wait.until(ExpectedConditions.elementToBeClickable(By.linkText("Train timetable")));
-            trainTimetableLink.click();
+        LoginPage loginPage = homePage.gotoLoginPage();
+        loginPage.login(Constant.USERNAME, Constant.PASSWORD);
 
-            // Chờ và nhấn vào liên kết "Book ticket"
-            WebElement bookTicketLink = wait.until(ExpectedConditions.elementToBeClickable(By.linkText("Book ticket")));
-            bookTicketLink.click();
+        TimeTablePage timeTablePage = loginPage.goToTimeTablePage();
 
-            // Xác minh tiêu đề trang điều hướng có đúng với kỳ vọng không
-            String pageTitle = driver.getTitle(); // Lấy tiêu đề trang
-            assertEquals(pageTitle, "Book ticket - Safe Railway", "Page title does not match the expected value!");
+        timeTablePage.clickBookTicketLink("Huế", "Sài Gòn");
 
-            // In tiêu đề trang (chỉ để xác minh thông tin trên console)
-            System.out.println("Navigated to: " + pageTitle);
+        BookTicketPage bookTicketPage = new BookTicketPage(Constant.WEBDRIVER);
 
-        } catch (Exception e) {
-            // In ra thông báo lỗi nếu có lỗi xảy ra
-            System.err.println("Test failed: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
+        System.out.println("Validating departure and arrival values...");
+        boolean isDepartCorrect = bookTicketPage.isDepartValuesCorrect("Huế");
+        boolean isArriveCorrect = bookTicketPage.isArriveValuesCorrect("Sài Gòn");
 
-    @AfterClass
-    public void tearDown() {
-        // Đóng trình duyệt sau khi test hoàn tất
-        if (driver != null) {
-            driver.quit();
-        }
+        System.out.println("Departure validation result: " + isDepartCorrect);
+        System.out.println("Arrival validation result: " + isArriveCorrect);
+
+        Assert.assertTrue(isDepartCorrect, "Depart from is not correct.");
+        Assert.assertTrue(isArriveCorrect, "Arrive at is not correct.");
     }
 }

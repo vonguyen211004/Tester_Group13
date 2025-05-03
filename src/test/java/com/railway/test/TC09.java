@@ -2,57 +2,83 @@ package com.railway.test;
 
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
-import org.testng.annotations.*;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 import io.github.bonigarcia.wdm.WebDriverManager;
+
+import java.time.Duration;
 
 public class TC09 {
     WebDriver driver;
+    WebDriverWait wait;
+    JavascriptExecutor js;
 
-    @BeforeClass
-    public void setup() {
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
-        driver.manage().window().maximize();
-    }
+    private static final String URL = "http://railwayb1.somee.com/";
+    private static final String USERNAME = System.getenv("RAILWAY_USERNAME") != null
+            ? System.getenv("RAILWAY_USERNAME")
+            : "vovanbaonguyen19@gmail.com";
+    private static final String PASSWORD = System.getenv("RAILWAY_PASSWORD") != null
+            ? System.getenv("RAILWAY_PASSWORD")
+            : "baonguyen2004";
+    private final String newPassword = "baonguyen123";
 
     @Test
-    public void changePasswordSuccessfully() {
-        driver.get("http://railwayb1.somee.com/");
-
-        // Step 1: Login
-        driver.findElement(By.linkText("Login")).click();
-        driver.findElement(By.id("username")).sendKeys("validUser@test.com"); // hãy chắc chắn là user này đã tồn tại
-        driver.findElement(By.id("password")).sendKeys("12345678");
-        driver.findElement(By.xpath("//input[@type='submit']")).click();
-
-        // Step 2: Check login success
+    public void TC09_NguoiDungCoTheThayDoiMatKhau() {
         try {
-            WebElement welcomeMsg = driver.findElement(By.xpath("//div[@class='account']/strong"));
-            System.out.println("Login success: " + welcomeMsg.getText());
-        } catch (NoSuchElementException e) {
-            System.out.println("Login failed. Check credentials.");
-            return;
-        }
+            WebDriverManager.chromedriver().setup();
+            driver = new ChromeDriver();
+            driver.manage().window().maximize();
+            wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            js = (JavascriptExecutor) driver;
 
-        // Step 3: Click Change password
-        try {
-            driver.findElement(By.linkText("Change password")).click();
-
-            driver.findElement(By.id("currentPassword")).sendKeys("12345678");
-            driver.findElement(By.id("newPassword")).sendKeys("newpass123");
-            driver.findElement(By.id("confirmPassword")).sendKeys("newpass123");
-            driver.findElement(By.xpath("//input[@type='submit']")).click();
-
-            // Step 4: Verify success message
-            String message = driver.findElement(By.xpath("//p[@class='message success']")).getText();
-            System.out.println("Change password success message: " + message);
-        } catch (NoSuchElementException e) {
-            System.out.println("Link 'Change password' not found. Are you logged in?");
+            openUrl(URL);
+            login(USERNAME, PASSWORD);
+            changePassword(PASSWORD, newPassword);
+            verifyMessage("//p[@class='message success']", "Your password has been updated!");
+            changePassword(newPassword, PASSWORD);
+            System.out.println("Password reverted successfully.");
+        } catch (Exception e) {
+            logError("Error executing TC09", e);
+            Assert.fail("TC09 failed: " + e.getMessage());
+        } finally {
+            if (driver != null) {
+                System.out.println("Closing browser...");
+                driver.quit();
+            }
         }
     }
 
-    @AfterClass
-    public void tearDown() {
-        driver.quit();
+    private void openUrl(String url) {
+        driver.get(url);
+    }
+
+    private void login(String username, String password) {
+        wait.until(ExpectedConditions.elementToBeClickable(By.linkText("Login"))).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("username"))).sendKeys(username);
+        driver.findElement(By.id("password")).sendKeys(password);
+        driver.findElement(By.xpath("//input[@type='submit']")).click();
+    }
+
+    private void changePassword(String currentPassword, String newPassword) {
+        wait.until(ExpectedConditions.elementToBeClickable(By.linkText("Change password"))).click();
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("currentPassword"))).sendKeys(currentPassword);
+        driver.findElement(By.id("newPassword")).sendKeys(newPassword);
+        driver.findElement(By.id("confirmPassword")).sendKeys(newPassword);
+
+        WebElement submitBtn = driver.findElement(By.xpath("//input[@type='submit']"));
+        js.executeScript("arguments[0].scrollIntoView(true);", submitBtn);
+        js.executeScript("arguments[0].click();", submitBtn);
+    }
+
+    private void verifyMessage(String xpath, String expectedMessage) {
+        String actualMessage = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(xpath))).getText();
+        Assert.assertEquals(actualMessage, expectedMessage, "Message does not match!");
+    }
+
+    private void logError(String message, Exception e) {
+        System.err.println(message);
+        e.printStackTrace();
     }
 }

@@ -35,6 +35,13 @@
             <artifactId>webdrivermanager</artifactId>
             <version>5.7.0</version> <!-- thử dùng version thấp hơn 5.8.0 -->
         </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.4.11</version>
+        </dependency>
+
+
     </dependencies>
 
 

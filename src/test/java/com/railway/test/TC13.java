@@ -1,82 +1,104 @@
 package com.railway.test;
 
+import org.testng.Assert;
 import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.openqa.selenium.JavascriptExecutor;
-import org.testng.annotations.*;
-import io.github.bonigarcia.wdm.WebDriverManager;
+import org.testng.annotations.Test;
 
 import java.time.Duration;
 
-import static org.testng.Assert.assertEquals;
+import pageObjects.Railway.HomePage;
+import pageObjects.Railway.LoginPage;
+import common.Constant.Constant;
+import io.github.bonigarcia.wdm.WebDriverManager;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 
 public class TC13 {
-    WebDriver driver;
 
-    @BeforeClass
-    public void setup() {
-        // Setup WebDriver và maximize cửa sổ trình duyệt
-        WebDriverManager.chromedriver().setup();
-        driver = new ChromeDriver();
-        driver.manage().window().maximize();
-    }
+    private WebDriverWait wait;
 
     @Test
-    public void resetPasswordMismatch() {
-        driver.get("http://railwayb1.somee.com/Account/ForgotPassword.cshtml");
+    public void TC13() {
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--remote-allow-origins=*");
+        options.addArguments("--disable-notifications");
+        options.addArguments("--start-maximized");
 
-        JavascriptExecutor js = (JavascriptExecutor) driver;
-
-        // Đảm bảo trang đã được tải đầy đủ
-        boolean isPageLoaded = (Boolean) js.executeScript("return document.readyState === 'complete';");
-        if (!isPageLoaded) {
-            System.out.println("Page is not fully loaded. Test aborted.");
-            return;
-        }
-
-        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+        Constant.WEBDRIVER = new ChromeDriver(options);
+        wait = new WebDriverWait(Constant.WEBDRIVER, Duration.ofSeconds(20));
 
         try {
-            // Điền vào token
-            WebElement tokenField = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("token")));
-            tokenField.sendKeys("someToken123"); // Token hợp lệ
+            // Pass WebDriver to the HomePage constructor
+            HomePage homePage = new HomePage(Constant.WEBDRIVER);
+            homePage.open();
+            LoginPage loginPage = homePage.gotoLoginPage();
 
-            // Điền mật khẩu mới
-            WebElement newPasswordField = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("newPassword")));
-            newPasswordField.sendKeys("12345678");
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("username")));
 
-            // Điền xác nhận mật khẩu không khớp
-            WebElement confirmPasswordField = wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("confirmPassword")));
-            confirmPasswordField.sendKeys("87654321");
+            WebElement forgotPasswordLink = wait.until(
+                    ExpectedConditions.elementToBeClickable(By.linkText("Forgot Password page"))
+            );
 
-            // Scroll và nhấn nút submit
-            WebElement submitButton = driver.findElement(By.xpath("//input[@type='submit']"));
-            js.executeScript("arguments[0].scrollIntoView(true);", submitButton);
-            js.executeScript("arguments[0].click();", submitButton);
+            JavascriptExecutor js = (JavascriptExecutor) Constant.WEBDRIVER;
+            js.executeScript("arguments[0].scrollIntoView(true);", forgotPasswordLink);
+            js.executeScript("arguments[0].click();", forgotPasswordLink);
 
-            // Chờ thông báo lỗi và lấy thông báo
-            WebElement errorMessage = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//p[@class='message error']")));
-            String error = errorMessage.getText();
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("email")));
 
-            // Xác minh thông báo lỗi chính xác
-            assertEquals(error, "Passwords do not match.", "Error message content is incorrect!");
-            System.out.println("Reset error: " + error);
+            WebElement emailField = Constant.WEBDRIVER.findElement(By.id("email"));
+            emailField.clear();
+            emailField.sendKeys(Constant.USERNAME);
+
+            WebElement sendInstructionsButton = wait.until(
+                    ExpectedConditions.elementToBeClickable(
+                            By.cssSelector("input[type='submit'][value='Send Instructions']")
+                    )
+            );
+            js.executeScript("arguments[0].scrollIntoView(true);", sendInstructionsButton);
+            js.executeScript("arguments[0].click();", sendInstructionsButton);
+
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.id("newPassword")));
+
+            WebElement newPasswordField = Constant.WEBDRIVER.findElement(By.id("newPassword"));
+            WebElement confirmPasswordField = Constant.WEBDRIVER.findElement(By.id("confirmPassword"));
+
+            newPasswordField.sendKeys("NewStrongPassword123!");
+            confirmPasswordField.sendKeys("DifferentPassword456!");
+
+            WebElement resetPasswordButton = Constant.WEBDRIVER.findElement(
+                    By.cssSelector("input[type='submit'][value='Reset Password']")
+            );
+            js.executeScript("arguments[0].click();", resetPasswordButton);
+
+            WebElement formError = wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(
+                            By.xpath("//*[contains(text(),'Could not reset password')]")
+                    )
+            );
+            Assert.assertTrue(formError.isDisplayed());
+
+            WebElement confirmError = wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(
+                            By.xpath("//label[@for='confirmPassword' and contains(text(),'The password confirmation did not match')]")
+                    )
+            );
+            Assert.assertTrue(confirmError.isDisplayed());
+
+            System.out.println("TC13 Passed");
 
         } catch (Exception e) {
-            System.err.println("Test failed: " + e.getMessage());
+            System.out.println("Error during TC13 execution:");
             e.printStackTrace();
-        }
-    }
-
-    @AfterClass
-    public void tearDown() {
-        // Đóng trình duyệt sau khi test hoàn tất
-        if (driver != null) {
-            driver.quit();
+            Assert.fail("TC13 failed with error: " + e.getMessage());
+        } finally {
+            if (Constant.WEBDRIVER != null) {
+                Constant.WEBDRIVER.quit();
+            }
         }
     }
 }
